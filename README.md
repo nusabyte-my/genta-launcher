@@ -329,5 +329,5 @@ where it should float.
 ## License
 
 [MIT](LICENSE) © 2026 nusabyte-my. Bundled fonts (Doto, Space Grotesk, Space Mono) are
-under the SIL Open Font License 1.1. Protocol files keep their own permissive licenses.
+under the SIL Open Font License 1.1. Protocol files keep their own permissive licenses (see [THIRD_PARTY.md](THIRD_PARTY.md)).
 Not affiliated with Nothing Technology, System76, SimpMusic, OpenAI, xAI, Meta or JAKIM.
