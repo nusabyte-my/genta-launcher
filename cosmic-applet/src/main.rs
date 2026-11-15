@@ -31,7 +31,15 @@ struct Solat {
 }
 
 #[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+struct BellStatus {
+    tip: Option<String>,
+    thinking: Option<bool>,
+    meeting_soon: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
 struct Status {
+    bell: Option<BellStatus>,
     solat: Option<Solat>,
     mode: Option<String>,
     text: Option<String>,
@@ -71,6 +79,8 @@ fn genta_command_with(arguments: &[&str]) {
 struct Applet {
     core: Core,
     label: String,
+    /// Colour of the bell-state dot (same meaning as the desktop bell); None = calm, no dot.
+    dot: Option<cosmic::iced::Color>,
     query: String,
 }
 
@@ -86,6 +96,28 @@ enum Message {
 }
 
 impl Applet {
+    fn bell_colour() -> Option<cosmic::iced::Color> {
+        use cosmic::iced::Color;
+        let status = read_status()?;
+        let bell = status.bell.clone().unwrap_or_default();
+        let soon_prayer = status.solat.as_ref().and_then(|s| s.time.clone()).and_then(|time| {
+            chrono::NaiveTime::parse_from_str(&time, "%H:%M").ok()
+        }).map(|t| (0..=10).contains(&(t - Local::now().time()).num_minutes())).unwrap_or(false);
+        if bell.thinking.unwrap_or(false) {
+            Some(Color::from_rgb8(0x3E, 0xC7, 0xC2))
+        } else if status.mode.as_deref() == Some("running") {
+            Some(Color::from_rgb8(0xD7, 0x19, 0x21))
+        } else if bell.meeting_soon.as_deref().map(|m| !m.is_empty()).unwrap_or(false) {
+            Some(Color::from_rgb8(0xF0, 0xB4, 0x29))
+        } else if soon_prayer {
+            Some(Color::from_rgb8(0x5E, 0xDB, 0x8C))
+        } else if bell.tip.as_deref().map(|t| !t.is_empty()).unwrap_or(false) {
+            Some(Color::from_rgb8(0xF0, 0xB4, 0x29))
+        } else {
+            None
+        }
+    }
+
     fn compose() -> String {
         let now = Local::now();
         let mut parts = vec![now.format("%H:%M").to_string(), now.format("%a %-d %b").to_string()];
@@ -115,9 +147,7 @@ impl Applet {
                 Some("paused") => parts.push(format!("❚❚ {}", status.text.unwrap_or_default())),
                 _ => {}
             }
-            if status.tips.unwrap_or(0) > 0 {
-                parts.push("✦".to_string());
-            }
+            let _ = status.tips;
         }
         parts.join("  ·  ")
     }
@@ -138,7 +168,7 @@ impl cosmic::Application for Applet {
     }
 
     fn init(core: Core, _flags: ()) -> (Self, Task<Message>) {
-        (Self { core, label: Self::compose(), query: String::new() }, Task::none())
+        (Self { core, label: Self::compose(), dot: Self::bell_colour(), query: String::new() }, Task::none())
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -148,6 +178,7 @@ impl cosmic::Application for Applet {
                 if label != self.label {
                     self.label = label;
                 }
+                self.dot = Self::bell_colour();
             }
             Message::Open => genta_command("launcher"),
             Message::Workspace => genta_command("toggle"),
@@ -173,7 +204,13 @@ impl cosmic::Application for Applet {
             .on_input(Message::SearchInput)
             .on_submit(|_| Message::SearchFocus)
             .width(cosmic::iced::Length::Fixed(210.0));
-        let clock = widget::button::custom(self.core.applet.text(self.label.clone()))
+        let mut inner: Vec<Element<'_, Message>> = Vec::new();
+        if let Some(colour) = self.dot {
+            inner.push(widget::text("●").class(cosmic::theme::Text::Color(colour)).into());
+        }
+        inner.push(self.core.applet.text(self.label.clone()).into());
+        let clock_content = widget::row::with_children(inner).spacing(6).align_y(cosmic::iced::Alignment::Center);
+        let clock = widget::button::custom(clock_content)
             .class(cosmic::theme::Button::AppletIcon)
             .padding([0, self.core.applet.suggested_padding(true).0])
             .on_press(Message::Open);

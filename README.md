@@ -234,6 +234,32 @@ one app embed another's window, so this is the closest equivalent.)
 To use your YouTube Music library and Spotify lyrics, log in inside SimpMusic using
 its [official guide](https://www.simpmusic.org/blogs/en/how-to-log-in-on-desktop-app).
 
+## Genta the bell (desktop companion)
+
+A small animated dot-matrix bell sits on top of the dock (`bin/genta-bell`, started by
+Genta). It draws into a COSMIC overlay (wlr-layer-shell): transparent, above your
+windows, and clicks pass through everywhere except the bell and its bubble.
+
+| State | Looks like |
+| --- | --- |
+| idle / watching | white, breathing, blinks; eyes follow the pointer |
+| thinking (AI, Codex) | teal, clapper swings |
+| tip ready | amber, one wobble (and an optional soft *ding*) |
+| focus | red, eyes closed, *zzz* |
+| prayer within 10 min | green, slow bow, one bubble |
+| meeting within 10 min | amber, one bubble |
+| done | green sparkles and a double hop |
+| Genta not running | grey, tilted |
+
+- **Click**: show the current tip (with its action, *Not now*, *Never*), or open Genta.
+- **Drag**: move it along the bottom of the screen (remembered).
+- **Right-click**: mute 1 h / today, size small–medium–large, sound on/off, hide.
+- It hops a little about once an hour and says *Selamat pagi* once a day.
+- Quiet by design: it only speaks first for meetings and prayers; hides in full-screen
+  apps and Do Not Disturb; two dismissed tips in a row mute it for an hour.
+- `?bell off` / `?bell on` in the launcher. The top-bar clock shows the same state as a
+  coloured dot.
+
 ## Top-bar search and clock (COSMIC)
 
 The centre of the top bar holds a **search bar** and the Genta clock. Click the search

@@ -6,10 +6,12 @@ Typing       → app results list (Alt+1…9 opens a row directly).
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 import os
 from pathlib import Path
 import shlex
+import sys
+import time
 import subprocess
 
 from PySide6.QtCore import QAbstractListModel, QEvent, QFileSystemWatcher, QLocale, QModelIndex, QRect, QRectF, QSize, Qt, QTimer, QUrl
@@ -507,6 +509,7 @@ class AnswerPanel(QFrame):
         self._loader_frame = 0
         self._loader_title = title
         self.loader.start()
+        self.launcher.update_bell_status()
         self._tick_loader()
 
     def _tick_loader(self):
@@ -538,10 +541,12 @@ class AnswerPanel(QFrame):
             self.loader.stop()
             self.show_state(name.upper(), answer, False)
             self.launcher.bell.celebrate()
+            self.launcher.bell_done()
 
         def failed(message):
             self.loader.stop()
             self.show_state(name.upper(), str(message), False)
+            self.launcher.update_bell_status()
 
         from desktop_services import background
         self.work = background(lambda: ai.chat(store, provider, prompt), done, failed)
@@ -572,13 +577,16 @@ class AnswerPanel(QFrame):
                 elif tail:
                     message = f"{message}\n\n{tail}"
             self.show_state(title + (" · DONE" if ok else " · FAILED"), message, False)
+            self.launcher.update_bell_status()
             if ok:
                 self.launcher.bell.celebrate()
+                self.launcher.bell_done()
 
         self.job.output.connect(output)
         self.job.finished.connect(finished)
         self.show_state(title, "Starting Codex…", True)
         self.job.start()
+        self.launcher.update_bell_status()
 
     def stop(self):
         if self.job is not None:
@@ -768,6 +776,12 @@ class GlassLauncher(QWidget):
         if getattr(workspace, "solat", None) is None:
             workspace.solat = SolatService(workspace, self)
             workspace.solat.start()
+        workspace.tip_engine.changed.connect(self.update_bell_status)
+        self.bell_timer = QTimer(self)
+        self.bell_timer.setInterval(30_000)
+        self.bell_timer.timeout.connect(self.update_bell_status)
+        self.bell_timer.start()
+        QTimer.singleShot(2500, self.start_bell)
         self.board = WidgetBoard(self)
         self.recent = RecentStrip(self)
         root.addWidget(self.recent)
@@ -884,6 +898,8 @@ class GlassLauncher(QWidget):
         body = text.lstrip()[1:].strip()
         if body.split(" ", 1)[0].lower() == "keys":
             return "↵  Set API keys and models for ChatGPT, Grok and Meta Muse"
+        if body.split(" ", 1)[0].lower() == "bell":
+            return "↵  ?bell on / ?bell off — the animated bell on the dock"
         if body.split(" ", 1)[0].lower() == "layout":
             return "↵  ?layout bar = float under the top bar (default) · ?layout center = middle of the screen"
         if body.split(" ", 1)[0].lower() == "solat":
@@ -925,6 +941,14 @@ class GlassLauncher(QWidget):
         if text.lstrip()[1:].strip().split(" ", 1)[0].lower() == "keys":
             self.search.clear()
             KeysDialog(self).exec()
+            return
+        if text.lstrip()[1:].strip().split(" ", 1)[0].lower() == "bell":
+            choice = text.lstrip()[1:].strip()[4:].strip().lower()
+            if choice in ("on", "off"):
+                self.store.set_setting("bell_enabled", choice == "on")
+                self.start_bell() if choice == "on" else self.stop_bell()
+                self.show_hint("Desktop bell " + ("on." if choice == "on" else "off."))
+                self.search.clear()
             return
         if text.lstrip()[1:].strip().split(" ", 1)[0].lower() == "layout":
             choice = text.lstrip()[1:].strip()[6:].strip().lower()
@@ -1170,6 +1194,68 @@ class GlassLauncher(QWidget):
             self.bell.set_state("error")
         else:
             self.bell.set_state("idle")
+
+    def update_bell_status(self):
+        """Share what the desktop bell (bin/genta-bell) should show, via Genta's status file."""
+        engine = getattr(self.workspace, "tip_engine", None)
+        tip = engine.tips[0] if engine is not None and engine.tips else None
+        try:
+            today = date.today().isoformat()
+            todo = sum(1 for t in self.store.tasks(include_done=False) if t["day"] and t["day"] <= today)
+        except Exception:
+            todo = 0
+        meeting = engine._next_event(minutes=10) if engine is not None else None
+        status = {
+            "tip": tip.text if tip else "", "tip_id": tip.id if tip else "", "tip_action": tip.action_label if tip else "",
+            "thinking": self.answer.busy(), "done": getattr(self, "_bell_done", 0), "todo": todo,
+            "meeting_soon": (meeting.get("title") or "Meeting") if meeting else "",
+        }
+        if status != getattr(self.workspace, "bell_status", None):
+            self.workspace.bell_status = status
+            self.workspace.publish_status()
+
+    def bell_done(self):
+        self._bell_done = time.time()
+        self.update_bell_status()
+
+    def tip_command(self, verb, tip_id):
+        engine = getattr(self.workspace, "tip_engine", None)
+        tip = next((t for t in engine.tips if t.id == tip_id), None) if engine else None
+        if tip is None:
+            return
+        {"run": engine.run, "snooze": engine.snooze, "mute": engine.mute}[verb](tip)
+        self.update_bell_status()
+
+    def start_bell(self):
+        """Run the desktop bell as a child process (restarted if it crashes), unless turned off."""
+        if not self.store.get_setting("bell_enabled", True) or not os.environ.get("WAYLAND_DISPLAY"):
+            return
+        from PySide6.QtCore import QProcess, QProcessEnvironment
+        if getattr(self, "bell_process", None) is not None and self.bell_process.state() != QProcess.ProcessState.NotRunning:
+            return
+        process = QProcess(self)
+        environment = QProcessEnvironment.systemEnvironment()
+        environment.remove("QT_QPA_PLATFORM")
+        process.setProcessEnvironment(environment)
+        process.setProcessChannelMode(QProcess.ProcessChannelMode.ForwardedErrorChannel)
+        process.setStandardOutputFile(QProcess.nullDevice())
+        process.finished.connect(lambda code, status: self._bell_finished(code))
+        process.start(sys.executable, [str(Path(__file__).resolve().parent.parent / "bin/genta-bell")])
+        self.bell_process = process
+        self._bell_restarts = getattr(self, "_bell_restarts", 0)
+
+    def _bell_finished(self, code):
+        if self.store.get_setting("bell_enabled", True) and self._bell_restarts < 5 and code != 0:
+            self._bell_restarts += 1
+            QTimer.singleShot(3000 * self._bell_restarts, self.start_bell)
+
+    def stop_bell(self):
+        process = getattr(self, "bell_process", None)
+        if process is not None:
+            process.finished.disconnect()
+            process.terminate()
+            process.waitForFinished(1000)
+            self.bell_process = None
 
     def search_for(self, text=""):
         """Open (or keep open) and put text in the search box, cursor at the end."""

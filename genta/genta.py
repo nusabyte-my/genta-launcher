@@ -442,6 +442,8 @@ class GentaWindow(WorkspacePanels, QWidget):
             status["tips"] = self._tip_count
         if getattr(self, "solat_status", None):
             status["solat"] = self.solat_status
+        if getattr(self, "bell_status", None):
+            status["bell"] = self.bell_status
         pill = (status["mode"], status["text"].split(":")[0] if status["mode"] != "idle" else status["text"])
         if pill != getattr(self, "_tray_pill", None):
             self._tray_pill = pill
@@ -1116,6 +1118,8 @@ class GentaWindow(WorkspacePanels, QWidget):
             self.launcher.hide()
         if getattr(self, "tip_engine", None) is not None:
             self.tip_engine.stop()
+        if self.launcher is not None:
+            self.launcher.stop_bell()
         status_file = runtime_dir() / STATUS_FILE
         try:
             if json.loads(status_file.read_text()).get("pid") == os.getpid():
@@ -1196,6 +1200,12 @@ def main():
                     window.toggle()
                 elif command == "launcher":
                     window.toggle_launcher()
+                elif command.split(":", 1)[0] in ("tip_run", "tip_snooze", "tip_mute") and window.launcher is not None:
+                    verb, tip_id = command.split(":", 1)
+                    window.launcher.tip_command(verb[4:], tip_id[:200])
+                elif command in ("bell_off", "bell_on") and window.launcher is not None:
+                    store.set_setting("bell_enabled", command == "bell_on")
+                    window.launcher.start_bell() if command == "bell_on" else None
                 elif command == "search" or command.startswith("search:"):
                     window.open_search(command[7:][:500])
                 elif command == "focus_toggle":

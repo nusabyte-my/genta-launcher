@@ -45,8 +45,9 @@ class ExtForeignToplevelHandleV1(Interface):
 class ExtForeignToplevelListV1(Interface):
     """List toplevels
 
-    A toplevel is defined as a surface with a role similar to xdg_toplevel.
-    XWayland surfaces may be treated like toplevels in this protocol.
+    A toplevel is defined as a surface with a role similar to
+    :class:`~pywayland.protocol.xdg_shell.XdgToplevel`. XWayland surfaces may
+    be treated like toplevels in this protocol.
 
     After a client binds the :class:`ExtForeignToplevelListV1`, each mapped
     toplevel window will be sent using the
