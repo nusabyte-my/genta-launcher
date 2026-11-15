@@ -3,3 +3,5 @@ __pycache__/
 .jebat/
 .kiro/
 cosmic-applet/target/
+genta/.kiro/
+genta/.jebat/

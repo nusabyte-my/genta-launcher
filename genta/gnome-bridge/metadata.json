@@ -1,0 +1,1 @@
+{"uuid":"genta-bridge@local.ai","name":"Genta app-identity bridge","description":"Expose only the focused app ID to Genta for opt-in distraction nudges. No window titles or typed content.","shell-version":["49","50","51"],"version":1}

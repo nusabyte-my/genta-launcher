@@ -42,7 +42,7 @@ class Sections(unittest.TestCase):
     def test_headers_are_skipped_for_alt_numbers(self):
         import os
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
-        sys.path.insert(0, str(Path.home() / "Desktop/Genta"))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "genta"))
         from PySide6.QtWidgets import QApplication
         QApplication.instance() or QApplication([])
         from glass_launcher.apps import App

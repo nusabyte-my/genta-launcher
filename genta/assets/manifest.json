@@ -1,0 +1,17 @@
+{
+  "project": "Genta",
+  "style": "Original white/red dot matrix on near-black; no proprietary Nothing font or logo",
+  "artcraft": {
+    "state": "held_by_user",
+    "paid_jobs_submitted": 0,
+    "discovery_source": "https://api.storyteller.ai/v1/omni_gen/models/image",
+    "model": "gpt_image_2",
+    "quality": "high",
+    "resolution": "two_k",
+    "estimates": {"logo_master_credits": 22, "sprite_sheet_credits": 16},
+    "planned_logo": "Original minimal Nusantara-inspired bell/chime silhouette on a regular white dot grid, red clapper, no text, no borrowed trademarks; master used to derive favicon and app icon",
+    "planned_sprite": "8 consistent bell frames in a 4-by-2 grid, identical center/pivot/scale, subtle left/right ring and a red clapper pulse; normalize to 48x48 transparent frames at 100ms per frame"
+  },
+  "typography": {"source": "art.py", "provenance": "Original code-authored five-by-seven dot glyphs", "palette": ["#101010", "#eeece7", "#e84a3c"], "rendering": "Native Qt vector circles"},
+  "soundscapes": {"source": "soundscapes.py", "provenance": "Original deterministic procedural synthesis; no third-party samples", "format": "mono PCM16 WAV, 22050 Hz, 24-second loops", "peak_dbfs": -12, "names": ["Brown noise", "Pink noise", "Rain", "Ocean"]}
+}

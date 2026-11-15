@@ -7,7 +7,7 @@ from pathlib import Path
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 ROOT = Path(__file__).resolve().parent.parent
-sys.path[:0] = [str(ROOT), str(Path.home() / "Desktop/Genta")]
+sys.path[:0] = [str(ROOT), str(ROOT / "genta")]
 
 from PySide6.QtCore import QCoreApplication  # noqa: E402
 

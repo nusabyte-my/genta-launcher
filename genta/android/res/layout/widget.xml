@@ -1,0 +1,32 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_background">
+    <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="GENTA / TODAY" android:textColor="#EFEDE7" android:textSize="12sp" android:fontFamily="monospace" android:letterSpacing="0.12"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:orientation="horizontal" android:layout_marginTop="10dp" android:layout_marginBottom="8dp" android:baselineAligned="false">
+        <LinearLayout android:id="@+id/widget_inbox" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:padding="8dp" android:layout_marginEnd="4dp" android:background="@drawable/widget_cell">
+            <TextView android:id="@+id/widget_inbox_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Inbox" android:textColor="#A3A39E" android:textSize="11sp"/>
+            <TextView android:id="@+id/widget_inbox_count" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="—" android:textColor="#EFEDE7" android:textSize="23sp" android:fontFamily="monospace"/>
+            <TextView android:id="@+id/widget_inbox_task" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#CBCBC7" android:textSize="11sp" android:maxLines="2" android:ellipsize="end"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/widget_planned" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:padding="8dp" android:layout_marginStart="2dp" android:layout_marginEnd="2dp" android:background="@drawable/widget_cell">
+            <TextView android:id="@+id/widget_planned_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Planned" android:textColor="#E84A3C" android:textSize="11sp"/>
+            <TextView android:id="@+id/widget_planned_count" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="—" android:textColor="#EFEDE7" android:textSize="23sp" android:fontFamily="monospace"/>
+            <TextView android:id="@+id/widget_planned_task" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#CBCBC7" android:textSize="11sp" android:maxLines="2" android:ellipsize="end"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/widget_done" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:padding="8dp" android:layout_marginStart="4dp" android:background="@drawable/widget_cell">
+            <TextView android:id="@+id/widget_done_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Done" android:textColor="#A3A39E" android:textSize="11sp"/>
+            <TextView android:id="@+id/widget_done_count" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="—" android:textColor="#EFEDE7" android:textSize="23sp" android:fontFamily="monospace"/>
+            <TextView android:id="@+id/widget_done_task" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#CBCBC7" android:textSize="11sp" android:maxLines="2" android:ellipsize="end"/>
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/widget_add" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="+ Task" android:textColor="#E84A3C" android:textSize="12sp"/>
+        <TextView android:id="@+id/widget_voice" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Speak" android:textColor="#A3A39E" android:textSize="12sp" android:paddingStart="12dp"/>
+        <TextView android:id="@+id/widget_open" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Open" android:textColor="#EFEDE7" android:textSize="12sp" android:paddingStart="16dp"/>
+    </LinearLayout>
+</LinearLayout>

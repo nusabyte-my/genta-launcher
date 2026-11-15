@@ -44,7 +44,7 @@ def install_applet(repo):
     APPLET_DESKTOP.write_text(
         "[Desktop Entry]\nType=Application\nName=Genta clock\n"
         "Comment=Time, date, weather and Genta focus timer\n"
-        f"Exec={applet_binary(repo)}\nIcon={Path.home() / 'Desktop/Genta/genta.svg'}\nTerminal=false\n"
+        f"Exec={applet_binary(repo)}\nIcon={repo / 'genta' / 'genta.svg'}\nTerminal=false\n"
         "Categories=COSMIC;\nKeywords=COSMIC;Applet;Genta;Time;Weather;\nNoDisplay=true\n"
         "X-CosmicApplet=true\nX-HostWaylandDisplay=true\n")
     print("COSMIC: Genta clock applet installed in the top bar centre (replaces COSMIC's clock).")

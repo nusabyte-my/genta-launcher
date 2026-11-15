@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$(readlink -f -- "$0")")"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+if [[ ! -x .venv/bin/python ]]; then
+  printf 'Run ./install.sh to install Genta dependencies first.\\n' >&2
+  exit 1
+fi
+exec .venv/bin/python genta.py "$@"

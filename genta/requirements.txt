@@ -1,0 +1,11 @@
+PySide6>=6.8,<7
+PyYAML>=6,<7
+numpy>=2,<3
+Pillow>=11,<14
+requests>=2.32,<3
+icalendar>=6,<8
+recurring-ical-events>=3,<4
+keyring>=25,<26
+cryptography>=43,<51
+qrcode>=8,<9
+pywayland>=0.4.18,<0.5; sys_platform == "linux"

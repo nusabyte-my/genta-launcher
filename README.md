@@ -80,7 +80,7 @@ shows what it is doing.
 - **Linux** with **COSMIC** (Wayland, tested on cosmic-comp 1.11) or **GNOME** (49–51).
 - **Genta**, the companion planner app (tasks, focus timer, notes, SimpMusic bridge,
   calendar). The launcher runs *inside* Genta's process and imports its modules.
-  Genta is expected at `~/Desktop/Genta` with its virtual environment in `.venv`.
+  Genta is included in this repo under `genta/` (its virtual environment goes in `genta/.venv`).
 - Python 3.12+ with **PySide6 6.8+**, `requests`, `keyring`, `PyGObject`, and
   **pywayland** (COSMIC desktop watcher). These are in Genta's `requirements.txt`.
 - Optional: `fd` (file search), `nmcli` and `bluetoothctl` (quick toggles),
@@ -94,7 +94,7 @@ git clone https://github.com/nusabyte-my/genta-launcher.git ~/launcher
 cd ~/launcher
 
 # 1. Dependencies inside Genta's environment
-~/Desktop/Genta/.venv/bin/pip install "pywayland>=0.4.18,<0.5"
+(cd genta && /usr/bin/python -m venv --system-site-packages .venv && .venv/bin/pip install -r requirements.txt && ./install.sh)
 
 # 2. (COSMIC) build the top-bar clock applet — about 2 minutes the first time
 (cd cosmic-applet && cargo build --release)
@@ -322,8 +322,8 @@ where it should float.
 ## Development
 
 ```sh
-~/Desktop/Genta/.venv/bin/python -m unittest discover -s tests -v
-~/Desktop/Genta/.venv/bin/python assets/make_logo.py      # regenerate the logo
+genta/.venv/bin/python -m unittest discover -s tests -v
+genta/.venv/bin/python assets/make_logo.py      # regenerate the logo
 ```
 
 ## License
