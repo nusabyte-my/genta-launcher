@@ -7,16 +7,16 @@ import json
 import re
 from urllib.parse import urlparse
 
-import icalendar
-import keyring
-import recurring_ical_events
 import requests
+
+# icalendar, recurring_ical_events and keyring are imported where used (they cost ~12 MiB at startup).
 
 SERVICE = 'Genta'
 MAX_BYTES = 10 * 1024 * 1024
 
 
 def set_secret(name, value):
+    import keyring
     if value:
         keyring.set_password(SERVICE, name, value)
     else:
@@ -27,6 +27,7 @@ def set_secret(name, value):
 
 
 def secret(name):
+    import keyring
     return keyring.get_password(SERVICE, name) or ''
 
 
@@ -80,6 +81,8 @@ def normalize_event(source, uid, title, start, end, location='', url='', descrip
 def from_ics(content, source, start=None):
     start = start or datetime.now().astimezone()
     end = start + timedelta(days=14)
+    import icalendar
+    import recurring_ical_events
     calendar = icalendar.Calendar.from_ical(content)
     items = recurring_ical_events.of(calendar).between(start, end)
     if len(items) > 10000:

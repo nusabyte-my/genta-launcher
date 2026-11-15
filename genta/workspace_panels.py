@@ -22,7 +22,6 @@ from i18n import LANGUAGES, tr
 from music_widget import MusicWidget
 from soundscapes import FocusAudio, NAMES
 from store import Store
-from sync_service import SyncHub, pair_device, synchronize
 from widgets import label, button, clear_layout
 
 ROOT = Path(__file__).resolve().parent
@@ -68,6 +67,7 @@ class WorkspacePanels:
         self.update_monitors()
         if self.store.get_setting('sync_hub_enabled', False):
             try:
+                from sync_service import SyncHub
                 self.hub = SyncHub(self.store.path, self.store.get_setting('sync_host', '127.0.0.1'))
                 self.hub.start()
             except (ValueError, OSError) as error:
@@ -520,6 +520,7 @@ class WorkspacePanels:
         def failed(message):
             self._sync_busy = False
             self.status.setText(message)
+        from sync_service import synchronize
         work = background(lambda: synchronize(self.store.path), ready, failed)
         self.track_work(work)
 
@@ -543,6 +544,7 @@ class WorkspacePanels:
             def action():
                 if self.hub:
                     self.hub.stop()
+                from sync_service import SyncHub
                 self.hub = SyncHub(self.store.path, addresses.currentText())
                 pairing = self.hub.start()
                 self.store.set_setting('sync_hub_enabled', True)
@@ -570,6 +572,7 @@ class WorkspacePanels:
             def action():
                 store = Store(self.store.path)
                 try:
+                    from sync_service import pair_device
                     pair_device(store, pairing)
                 finally:
                     store.close()

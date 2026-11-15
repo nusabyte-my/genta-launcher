@@ -2,14 +2,13 @@
 from pathlib import Path
 import wave
 
-import numpy as np
 from PySide6.QtCore import QObject, QUrl
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
 NAMES = ('Silence', 'Brown noise', 'Pink noise', 'Rain', 'Ocean')
 
 
 def render_sounds(folder):
+    import numpy as np  # only needed the first time the loops are generated
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     rate, duration = 22050, 24
@@ -41,37 +40,70 @@ def render_sounds(folder):
 
 
 class FocusAudio(QObject):
+    """Focus soundscape player. The media player (FFmpeg + audio output, ~60 MiB) is
+    created only when a sound actually has to play, and released when you pick Silence."""
+
     def __init__(self, folder, parent=None):
         super().__init__(parent)
         self.folder = Path(folder)
-        self.output = QAudioOutput(self)
-        self.output.setVolume(.09)
-        self.player = QMediaPlayer(self)
-        self.player.setAudioOutput(self.output)
-        self.player.setLoops(QMediaPlayer.Loops.Infinite)
+        self.output = None
+        self.player = None
+        self.level = .09
         self.name = 'Silence'
         self.running = False
+
+    def _ensure_player(self):
+        if self.player is None:
+            from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+            self.output = QAudioOutput(self)
+            self.output.setVolume(self.level)
+            self.player = QMediaPlayer(self)
+            self.player.setAudioOutput(self.output)
+            self.player.setLoops(QMediaPlayer.Loops.Infinite)
+        return self.player
+
+    def _release_player(self):
+        if self.player is not None:
+            self.player.stop()
+            self.player.deleteLater()
+            self.output.deleteLater()
+            self.player = self.output = None
+
+    def _path(self):
+        return self.folder / (self.name.lower().replace(' ', '-') + '.wav')
 
     def select(self, name):
         if name not in NAMES:
             raise ValueError('Choose a supported focus sound')
         self.name = name
-        self.player.stop()
-        if name != 'Silence':
-            path = self.folder / (name.lower().replace(' ', '-') + '.wav')
-            if not path.is_file():
-                render_sounds(self.folder)
-            self.player.setSource(QUrl.fromLocalFile(str(path)))
+        if name == 'Silence':
+            self._release_player()
+            return
+        if self.player is not None:
+            self.player.stop()
+            self._load()
             if self.running:
                 self.player.play()
 
+    def _load(self):
+        path = self._path()
+        if not path.is_file():
+            render_sounds(self.folder)
+        self.player.setSource(QUrl.fromLocalFile(str(path)))
+
     def volume(self, percent):
-        self.output.setVolume((max(0, min(100, percent)) / 100) ** 2)
+        self.level = (max(0, min(100, percent)) / 100) ** 2
+        if self.output is not None:
+            self.output.setVolume(self.level)
 
     def set_running(self, running):
         self.running = running
-        if self.name != 'Silence':
-            if running:
-                self.player.play()
-            else:
-                self.player.pause()
+        if self.name == 'Silence':
+            return
+        if running:
+            if self.player is None:
+                self._ensure_player()
+                self._load()
+            self.player.play()
+        elif self.player is not None:
+            self.player.pause()

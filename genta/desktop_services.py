@@ -11,8 +11,11 @@ import tempfile
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, QUrl
 from PySide6.QtGui import QCursor, QImage, QPixmap
-from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QCamera, QMediaCaptureSession, QMediaDevices, QMediaRecorder, QMediaFormat, QAudioInput
-from PySide6.QtMultimediaWidgets import QVideoWidget
+# Qt Multimedia (FFmpeg, PipeWire) costs several MiB; load it only when recording or previewing.
+def _media():
+    from PySide6 import QtMultimedia
+    return QtMultimedia
+
 from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 from widgets import label, button
 
@@ -60,13 +63,13 @@ class VoiceRecorder(QDialog):
         layout.addWidget(label('Speech uses your configured Hermes speech provider.\nCloud providers receive this recording. Nothing records in the background.', 'muted'))
         self.state = label('Microphone is off.')
         layout.addWidget(self.state)
-        self.capture = QMediaCaptureSession(self)
-        self.input = QAudioInput(QMediaDevices.defaultAudioInput(), self)
+        self.capture = _media().QMediaCaptureSession(self)
+        self.input = _media().QAudioInput(_media().QMediaDevices.defaultAudioInput(), self)
         self.capture.setAudioInput(self.input)
-        self.recorder = QMediaRecorder(self)
+        self.recorder = _media().QMediaRecorder(self)
         self.capture.setRecorder(self.recorder)
-        format = QMediaFormat(QMediaFormat.FileFormat.Wave)
-        format.setAudioCodec(QMediaFormat.AudioCodec.Wave)
+        format = _media().QMediaFormat(_media().QMediaFormat.FileFormat.Wave)
+        format.setAudioCodec(_media().QMediaFormat.AudioCodec.Wave)
         self.recorder.setMediaFormat(format)
         self.recorder.setAudioSampleRate(16000)
         self.recorder.setAudioChannelCount(1)
@@ -84,7 +87,7 @@ class VoiceRecorder(QDialog):
         self.limit.timeout.connect(self.stop)
 
     def toggle(self):
-        if self.recorder.recorderState() == QMediaRecorder.RecorderState.RecordingState:
+        if self.recorder.recorderState() == _media().QMediaRecorder.RecorderState.RecordingState:
             self.stop()
         else:
             self.transcribe.setEnabled(False)
@@ -96,7 +99,7 @@ class VoiceRecorder(QDialog):
         self.recorder.stop()
 
     def changed(self, state):
-        recording = state == QMediaRecorder.RecorderState.RecordingState
+        recording = state == _media().QMediaRecorder.RecorderState.RecordingState
         self.record.setText('Stop recording' if recording else 'Record again')
         self.state.setText('Recording… maximum one minute.' if recording else 'Microphone is off. Use the recording or record again.')
         self.transcribe.setEnabled(not recording and Path(self.path).is_file())
@@ -121,12 +124,12 @@ class CameraPreview(QDialog):
         layout = QVBoxLayout(self)
         self.state = label('Camera is off. Preview stays on this device; nothing is recorded.', 'muted')
         layout.addWidget(self.state)
-        self.video = QVideoWidget()
+        self.video = __import__("PySide6.QtMultimediaWidgets", fromlist=["QVideoWidget"]).QVideoWidget()
         layout.addWidget(self.video, 1)
-        devices = QMediaDevices.videoInputs()
-        self.camera = QCamera(devices[0], self) if devices else None
+        devices = _media().QMediaDevices.videoInputs()
+        self.camera = _media().QCamera(devices[0], self) if devices else None
         if self.camera:
-            self.session = QMediaCaptureSession(self)
+            self.session = _media().QMediaCaptureSession(self)
             self.session.setCamera(self.camera)
             self.session.setVideoOutput(self.video)
             self.camera.errorOccurred.connect(lambda error, message: self.state.setText(message))
