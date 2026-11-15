@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Report open windows and the focused app on COSMIC, one JSON line per change.
+
+Uses COSMIC's toplevel-info Wayland protocol (the same one its dock uses).
+Output: {"windows": [{"id": int, "app_id": str, "title": str, "active": bool}, ...]}
+Input (stdin): "activate <id>" brings that window to the front (window switcher).
+It reads window metadata only: no window contents, keystrokes or screenshots.
+Genta decides what (if anything) leaves the machine.
+"""
+import json
+import os
+from pathlib import Path
+import select
+import struct
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+os.environ.pop("QT_QPA_PLATFORM", None)
+
+from pywayland.client import Display  # noqa: E402
+
+from glass_launcher.wl.cosmic_toplevel_info_unstable_v1 import ZcosmicToplevelInfoV1  # noqa: E402
+from glass_launcher.wl.cosmic_toplevel_management_unstable_v1 import ZcosmicToplevelManagerV1  # noqa: E402
+from glass_launcher.wl.wayland import WlSeat  # noqa: E402
+
+ACTIVATED = 2
+
+
+def main():
+    display = Display()
+    try:
+        display.connect()
+    except Exception as error:
+        print(json.dumps({"error": f"no Wayland display: {error}"}), flush=True)
+        return 1
+    registry = display.get_registry()
+    names = {}
+    registry.dispatcher["global"] = lambda reg, name, interface, version: names.__setitem__(interface, name)
+    display.roundtrip()
+    if "zcosmic_toplevel_info_v1" not in names:
+        print(json.dumps({"error": "this compositor does not offer zcosmic_toplevel_info_v1"}), flush=True)
+        return 1
+    # Version 1 sends title/app_id/state directly on the handle (verified on cosmic-comp 1.11).
+    info = registry.bind(names["zcosmic_toplevel_info_v1"], ZcosmicToplevelInfoV1, 1)
+    manager = registry.bind(names["zcosmic_toplevel_manager_v1"], ZcosmicToplevelManagerV1, 1) if "zcosmic_toplevel_manager_v1" in names else None
+    seat = registry.bind(names["wl_seat"], WlSeat, 1) if "wl_seat" in names else None
+    windows, handles = {}, {}
+    counter = [0]
+    last = [None]
+
+    def publish():
+        snapshot = sorted(windows.values(), key=lambda w: (not w["active"], w["app_id"]))
+        if snapshot != last[0]:
+            last[0] = [dict(w) for w in snapshot]
+            print(json.dumps({"windows": snapshot}, ensure_ascii=False), flush=True)
+
+    def on_toplevel(_, handle):
+        counter[0] += 1
+        key = counter[0]
+        handles[key] = handle
+        data = windows[key] = {"id": key, "app_id": "", "title": "", "active": False}
+
+        def on_state(_, raw):
+            raw = bytes(raw)
+            data["active"] = ACTIVATED in struct.unpack(f"{len(raw) // 4}I", raw)
+
+        def on_closed(_):
+            windows.pop(key, None)
+            handles.pop(key, None)
+            publish()
+
+        handle.dispatcher["app_id"] = lambda _, value: data.__setitem__("app_id", value)
+        handle.dispatcher["title"] = lambda _, value: data.__setitem__("title", value)
+        handle.dispatcher["state"] = on_state
+        handle.dispatcher["done"] = lambda _: publish()
+        handle.dispatcher["closed"] = on_closed
+
+    info.dispatcher["toplevel"] = on_toplevel
+    display.roundtrip()
+    publish()
+    wayland_fd, stdin_fd = display.get_fd(), sys.stdin.fileno()
+    try:
+        while True:
+            display.dispatch(block=False)
+            display.flush()
+            readable, _, _ = select.select([wayland_fd, stdin_fd], [], [])
+            if wayland_fd in readable and display.dispatch(block=True) == -1:
+                break
+            if stdin_fd in readable:
+                line = sys.stdin.readline()
+                if not line:
+                    break  # Genta went away
+                parts = line.split()
+                if len(parts) == 2 and parts[1].isdigit() and manager and seat:
+                    handle = handles.get(int(parts[1]))
+                    if handle is not None and parts[0] == "activate":
+                        manager.unset_minimized(handle)
+                        manager.activate(handle, seat)
+                    elif handle is not None and parts[0] == "minimize":
+                        manager.set_minimized(handle)
+    except (BrokenPipeError, KeyboardInterrupt):
+        pass
+    sys.stdout.flush()
+    os._exit(0)  # skip pywayland teardown (it can abort on exit)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

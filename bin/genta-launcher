@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Fast keyboard-shortcut client for Genta.
+
+Sends one command to the running Genta over its local socket (stdlib only, no Qt
+import, so it returns in a few milliseconds). If Genta is not running, it starts
+Genta with the launcher open.
+
+Usage: genta-launcher [launcher|toggle|focus_toggle]
+"""
+import os
+from pathlib import Path
+import shutil
+import socket
+import sys
+import time
+
+COMMANDS = {"launcher": ["--launcher"], "toggle": [], "focus_toggle": None}
+
+
+def main():
+    command = sys.argv[1] if len(sys.argv) > 1 else "launcher"
+    try:  # tiny call log to debug shortcut wiring
+        log = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "genta-launcher-calls.log"
+        with open(log, "a") as handle:
+            handle.write(f"{time.strftime('%H:%M:%S')} {command} parent={os.getppid()}\n")
+    except OSError:
+        pass
+    if command not in COMMANDS:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or str(Path.home() / ".cache")
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(1.5)
+            client.connect(os.path.join(runtime, "genta.sock"))
+            client.sendall(command.encode())
+        return 0
+    except OSError:
+        pass
+    flags = COMMANDS[command]
+    if flags is None:
+        print("Genta is not running.", file=sys.stderr)
+        return 1
+    genta = os.environ.get("GENTA_BIN") or shutil.which("genta") or str(Path.home() / ".local/bin/genta")
+    os.execv(genta, [genta, *flags])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

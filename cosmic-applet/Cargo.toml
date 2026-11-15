@@ -1,0 +1,21 @@
+[package]
+name = "genta-applet"
+version = "0.1.0"
+edition = "2021"
+description = "Genta clock for the COSMIC panel: time, date, weather and focus timer"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[dependencies.libcosmic]
+git = "https://github.com/pop-os/libcosmic"
+default-features = false
+features = ["applet", "applet-token", "tokio", "wayland"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

@@ -1,0 +1,7 @@
+{
+  "uuid": "genta-pill@local.ai",
+  "name": "Genta",
+  "description": "Genta's focus timer and next task as a pill in the top bar. Left click opens the glass launcher, middle click the Genta workspace, right click pauses or resumes focus.",
+  "shell-version": ["49", "50", "51"],
+  "version": 1
+}

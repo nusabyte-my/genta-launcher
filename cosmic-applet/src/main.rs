@@ -1,0 +1,171 @@
+//! Genta clock applet for the COSMIC panel.
+//!
+//! Shows `HH:MM · Sun 15 Nov · 31° ☁` and, while a Genta focus session runs, `● 24:12`.
+//! Weather and focus come from Genta's status file ($XDG_RUNTIME_DIR/genta-status.json);
+//! the clock itself is local, so the applet still works when Genta is not running.
+//! Left click opens the Genta launcher, middle click the Genta workspace.
+
+use std::path::PathBuf;
+use std::process::Command;
+use std::time::Duration;
+
+use chrono::Local;
+use cosmic::app::{Core, Task};
+use cosmic::iced::{self, Subscription};
+use cosmic::widget;
+use cosmic::Element;
+use serde::Deserialize;
+
+const ID: &str = "dev.genta.CosmicAppletGenta";
+
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+struct Weather {
+    temp: Option<f64>,
+    symbol: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+struct Solat {
+    name: Option<String>,
+    time: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+struct Status {
+    solat: Option<Solat>,
+    mode: Option<String>,
+    text: Option<String>,
+    pid: Option<u32>,
+    weather: Option<Weather>,
+    tips: Option<u32>,
+}
+
+fn status_path() -> PathBuf {
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/tmp"));
+    runtime.join("genta-status.json")
+}
+
+fn read_status() -> Option<Status> {
+    let raw = std::fs::read_to_string(status_path()).ok()?;
+    let status: Status = serde_json::from_str(&raw).ok()?;
+    // Ignore a stale file left behind by a Genta process that is gone.
+    let alive = status
+        .pid
+        .map(|pid| PathBuf::from(format!("/proc/{pid}")).exists())
+        .unwrap_or(false);
+    alive.then_some(status)
+}
+
+fn genta_command(argument: &str) {
+    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    let client = home.join("launcher/bin/genta-launcher");
+    let _ = Command::new(client).arg(argument).spawn();
+}
+
+struct Applet {
+    core: Core,
+    label: String,
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    Tick,
+    Open,
+    Workspace,
+}
+
+impl Applet {
+    fn compose() -> String {
+        let now = Local::now();
+        let mut parts = vec![now.format("%H:%M").to_string(), now.format("%a %-d %b").to_string()];
+        if let Some(status) = read_status() {
+            if let Some(weather) = status.weather {
+                if let Some(temp) = weather.temp {
+                    let symbol = weather.symbol.unwrap_or_default();
+                    parts.push(format!("{:.0}° {}", temp, symbol).trim().to_string());
+                }
+            }
+            // Next prayer, shown when it is within 90 minutes.
+            if let Some(solat) = status.solat {
+                if let (Some(name), Some(time)) = (solat.name, solat.time) {
+                    let soon = chrono::NaiveTime::parse_from_str(&time, "%H:%M")
+                        .map(|t| {
+                            let minutes = (t - now.time()).num_minutes();
+                            (0..=90).contains(&minutes)
+                        })
+                        .unwrap_or(false);
+                    if soon {
+                        parts.push(format!("☾ {name} {time}"));
+                    }
+                }
+            }
+            match status.mode.as_deref() {
+                Some("running") => parts.push(format!("● {}", status.text.unwrap_or_default())),
+                Some("paused") => parts.push(format!("❚❚ {}", status.text.unwrap_or_default())),
+                _ => {}
+            }
+            if status.tips.unwrap_or(0) > 0 {
+                parts.push("✦".to_string());
+            }
+        }
+        parts.join("  ·  ")
+    }
+}
+
+impl cosmic::Application for Applet {
+    type Executor = cosmic::SingleThreadExecutor;
+    type Flags = ();
+    type Message = Message;
+    const APP_ID: &'static str = ID;
+
+    fn core(&self) -> &Core {
+        &self.core
+    }
+
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+
+    fn init(core: Core, _flags: ()) -> (Self, Task<Message>) {
+        (Self { core, label: Self::compose() }, Task::none())
+    }
+
+    fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::Tick => {
+                let label = Self::compose();
+                if label != self.label {
+                    self.label = label;
+                }
+            }
+            Message::Open => genta_command("launcher"),
+            Message::Workspace => genta_command("toggle"),
+        }
+        Task::none()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        iced::time::every(Duration::from_secs(1)).map(|_| Message::Tick)
+    }
+
+    fn view(&self) -> Element<'_, Message> {
+        let content = self.core.applet.text(self.label.clone());
+        let button = widget::button::custom(content)
+            .class(cosmic::theme::Button::AppletIcon)
+            .padding([0, self.core.applet.suggested_padding(true).0])
+            .on_press(Message::Open);
+        let area = widget::mouse_area(button).on_middle_press(Message::Workspace);
+        // Autosize lets the panel grow the applet to fit the text (otherwise it stays icon-sized).
+        self.core.applet.autosize_window(area).into()
+    }
+
+    fn style(&self) -> Option<cosmic::iced::theme::Style> {
+        Some(cosmic::applet::style())
+    }
+}
+
+fn main() -> cosmic::iced::Result {
+    cosmic::applet::run::<Applet>(())
+}

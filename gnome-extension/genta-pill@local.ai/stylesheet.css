@@ -1,0 +1,27 @@
+.genta-pill {
+  background-color: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 1px 11px;
+  spacing: 7px;
+}
+
+.genta-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+.genta-pill-label {
+  font-size: 0.9em;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  max-width: 240px;
+}
+
+.genta-pill.running { background-color: rgba(232, 74, 60, 0.22); border-color: rgba(232, 74, 60, 0.55); }
+.genta-pill.running .genta-pill-dot { background-color: #e84a3c; }
+.genta-pill.paused .genta-pill-dot { background-color: #f0b429; }
+.genta-pill.offline .genta-pill-label { color: rgba(255, 255, 255, 0.55); }
+.genta-pill.offline .genta-pill-dot { background-color: rgba(255, 255, 255, 0.25); }
