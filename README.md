@@ -93,8 +93,9 @@ shows what it is doing.
 git clone https://github.com/nusabyte-my/genta-launcher.git ~/launcher
 cd ~/launcher
 
-# 1. Dependencies inside Genta's environment
-(cd genta && /usr/bin/python -m venv --system-site-packages .venv && .venv/bin/pip install -r requirements.txt && ./install.sh)
+# 1. Install Genta (the app the launcher runs inside): creates genta/.venv,
+#    installs its dependencies and adds the `genta` command
+(cd genta && ./install.sh)
 
 # 2. (COSMIC) build the top-bar clock applet — about 2 minutes the first time
 (cd cosmic-applet && cargo build --release)
