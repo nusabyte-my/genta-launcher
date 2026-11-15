@@ -361,6 +361,14 @@ class GentaWindow(WorkspacePanels, QWidget):
             self.launcher = load_launcher(self)
         return self.launcher
 
+    def open_search(self, text=""):
+        """Open the launcher (always, never toggles closed) with text already in the search box."""
+        launcher = self.ensure_launcher()
+        if launcher is None:
+            self.expand()
+        else:
+            launcher.search_for(text)
+
     def toggle_launcher(self):
         launcher = self.ensure_launcher()
         if launcher is None:
@@ -1188,6 +1196,8 @@ def main():
                     window.toggle()
                 elif command == "launcher":
                     window.toggle_launcher()
+                elif command == "search" or command.startswith("search:"):
+                    window.open_search(command[7:][:500])
                 elif command == "focus_toggle":
                     window.toggle_focus()
                 elif "\n" in command:

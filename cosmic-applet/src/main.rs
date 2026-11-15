@@ -59,14 +59,19 @@ fn read_status() -> Option<Status> {
 }
 
 fn genta_command(argument: &str) {
+    genta_command_with(&[argument]);
+}
+
+fn genta_command_with(arguments: &[&str]) {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     let client = home.join("launcher/bin/genta-launcher");
-    let _ = Command::new(client).arg(argument).spawn();
+    let _ = Command::new(client).args(arguments).spawn();
 }
 
 struct Applet {
     core: Core,
     label: String,
+    query: String,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +79,10 @@ enum Message {
     Tick,
     Open,
     Workspace,
+    /// Click or focus on the search bar: open Genta's search right under the bar.
+    SearchFocus,
+    /// Typing in the bar hands the text to Genta, which takes over the keyboard.
+    SearchInput(String),
 }
 
 impl Applet {
@@ -129,7 +138,7 @@ impl cosmic::Application for Applet {
     }
 
     fn init(core: Core, _flags: ()) -> (Self, Task<Message>) {
-        (Self { core, label: Self::compose() }, Task::none())
+        (Self { core, label: Self::compose(), query: String::new() }, Task::none())
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -142,6 +151,13 @@ impl cosmic::Application for Applet {
             }
             Message::Open => genta_command("launcher"),
             Message::Workspace => genta_command("toggle"),
+            Message::SearchFocus => genta_command_with(&["search"]),
+            Message::SearchInput(text) => {
+                if !text.is_empty() {
+                    genta_command_with(&["search", &text]);
+                }
+                self.query.clear();
+            }
         }
         Task::none()
     }
@@ -151,14 +167,22 @@ impl cosmic::Application for Applet {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let content = self.core.applet.text(self.label.clone());
-        let button = widget::button::custom(content)
+        // Search bar (outside the clock button so clicks reach the field).
+        let search = widget::text_input::search_input("Search apps, files…", &self.query)
+            .on_focus(Message::SearchFocus)
+            .on_input(Message::SearchInput)
+            .on_submit(|_| Message::SearchFocus)
+            .width(cosmic::iced::Length::Fixed(210.0));
+        let clock = widget::button::custom(self.core.applet.text(self.label.clone()))
             .class(cosmic::theme::Button::AppletIcon)
             .padding([0, self.core.applet.suggested_padding(true).0])
             .on_press(Message::Open);
-        let area = widget::mouse_area(button).on_middle_press(Message::Workspace);
-        // Autosize lets the panel grow the applet to fit the text (otherwise it stays icon-sized).
-        self.core.applet.autosize_window(area).into()
+        let clock = widget::mouse_area(clock).on_middle_press(Message::Workspace);
+        let content = widget::row::with_children(vec![search.into(), clock.into()])
+            .spacing(8)
+            .align_y(cosmic::iced::Alignment::Center);
+        // Autosize lets the panel grow the applet to fit the content (otherwise it stays icon-sized).
+        self.core.applet.autosize_window(content).into()
     }
 
     fn style(&self) -> Option<cosmic::iced::theme::Style> {

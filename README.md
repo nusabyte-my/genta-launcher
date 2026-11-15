@@ -131,7 +131,7 @@ under the top bar; `?layout center` moves it to the middle of the screen, `?layo
 | Type | What happens |
 | --- | --- |
 | *(nothing)* | widget board, plus your most-used apps as a row of icons |
-| `fire` | apps and open windows, grouped; matched letters in red |
+| `fire` | apps, open windows and matching files, grouped; matched letters in red |
 | `frifox` | typos are forgiven for 4+ letters |
 | `wifi`, `bluetooth`, `display` … | jump to that COSMIC Settings page |
 | `2*19.5+3`, `sqrt(2)`, `(3+4)^2` | calculator; Enter copies the result |
@@ -234,7 +234,13 @@ one app embed another's window, so this is the closest equivalent.)
 To use your YouTube Music library and Spotify lyrics, log in inside SimpMusic using
 its [official guide](https://www.simpmusic.org/blogs/en/how-to-log-in-on-desktop-app).
 
-## Top-bar clock (COSMIC)
+## Top-bar search and clock (COSMIC)
+
+The centre of the top bar holds a **search bar** and the Genta clock. Click the search
+bar (or start typing in it) and Genta opens right under it with your text; one search
+covers apps, open windows, **files and documents in your home folder**, settings pages,
+the calculator and AI. From a terminal or another shortcut: `bin/genta-launcher search <text>`.
+
 
 `cosmic-applet/` is a small native COSMIC panel applet (Rust, libcosmic) that replaces
 the stock clock: `11:03 · Sun 15 Nov · 30° ☁ · ● 24:12 · ☾ Asar 16:22 · ✦`.

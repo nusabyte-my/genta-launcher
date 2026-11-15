@@ -705,6 +705,7 @@ class GlassLauncher(QWidget):
         self.apps = []
         self._was_active = False
         self._slide = 0.0
+        self._file_hits = {}
         configure_icon_theme()
         load_fonts()
         self.setWindowTitle(TITLE)
@@ -847,7 +848,12 @@ class GlassLauncher(QWidget):
                       icon_names=("dialog-question-symbolic", "help-about"), icon_path="")
             windows = [r for r in rows if r.id.startswith("window:")]
             programs = [r for r in rows if not r.id.startswith("window:")]
-            groups = [("WINDOWS", windows), ("APPS", programs), ("ACTIONS", ([calc] if calc else []) + settings_rows(text) + [ask])]
+            # Documents and folders join the same search (fd runs after a short pause in typing).
+            files = self._file_hits.get(text.strip(), []) if len(text.strip()) >= 3 else []
+            if len(text.strip()) >= 3 and text.strip() not in self._file_hits:
+                self.file_timer.start()
+            groups = [("WINDOWS", windows), ("APPS", programs[:8] if files else programs), ("FILES", files),
+                      ("ACTIONS", ([calc] if calc else []) + settings_rows(text) + [ask])]
             groups = [(name, items) for name, items in groups if items]
             combined = []
             for name, items in groups:
@@ -1022,6 +1028,16 @@ class GlassLauncher(QWidget):
             self.launch_index(self.model.index(row))
 
     def search_files(self):
+        if self.mode() == "apps":
+            query = self.search.text().strip()
+            if len(query) >= 3 and query not in self._file_hits:
+                self._file_hits = {query: file_rows(query, limit=4)}   # keep only the latest query
+                if self._file_hits[query]:
+                    selected = self.results.currentIndex().row()
+                    self.filter(self.search.text())
+                    if 0 <= selected < self.model.rowCount():
+                        self.results.setCurrentIndex(self.model.index(selected))
+            return
         if self.mode() != "files":
             return
         query = self.search.text().lstrip()[1:].strip()
@@ -1154,6 +1170,16 @@ class GlassLauncher(QWidget):
             self.bell.set_state("error")
         else:
             self.bell.set_state("idle")
+
+    def search_for(self, text=""):
+        """Open (or keep open) and put text in the search box, cursor at the end."""
+        if not self.isVisible():
+            self.present()
+        self.search.setText(text)
+        self.search.setCursorPosition(len(text))
+        self.raise_()
+        self.activateWindow()
+        self.search.setFocus()
 
     def toggle(self):
         if self.isVisible():

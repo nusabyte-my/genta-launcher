@@ -5,7 +5,7 @@ Sends one command to the running Genta over its local socket (stdlib only, no Qt
 import, so it returns in a few milliseconds). If Genta is not running, it starts
 Genta with the launcher open.
 
-Usage: genta-launcher [launcher|toggle|focus_toggle]
+Usage: genta-launcher [launcher|toggle|focus_toggle|search [text]]
 """
 import os
 from pathlib import Path
@@ -14,11 +14,12 @@ import socket
 import sys
 import time
 
-COMMANDS = {"launcher": ["--launcher"], "toggle": [], "focus_toggle": None}
+COMMANDS = {"launcher": ["--launcher"], "toggle": [], "focus_toggle": None, "search": ["--launcher"]}
 
 
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "launcher"
+    query = " ".join(sys.argv[2:]) if command == "search" else ""
     try:  # tiny call log to debug shortcut wiring
         log = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "genta-launcher-calls.log"
         with open(log, "a") as handle:
@@ -33,7 +34,7 @@ def main():
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
             client.settimeout(1.5)
             client.connect(os.path.join(runtime, "genta.sock"))
-            client.sendall(command.encode())
+            client.sendall((f"search:{query}" if command == "search" else command).encode())
         return 0
     except OSError:
         pass

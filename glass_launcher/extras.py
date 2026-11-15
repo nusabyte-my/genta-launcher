@@ -90,6 +90,18 @@ def settings_rows(query):
     return [row for _, row in rows[:3]]
 
 
+def _mime_icon(path):
+    """Theme icon names for a file's type (PDF, image, spreadsheet…), from its name only."""
+    try:
+        from gi.repository import Gio
+        content_type, _ = Gio.content_type_guess(str(path), None)
+        icon = Gio.content_type_get_icon(content_type)
+        names = tuple(icon.get_names()) if hasattr(icon, "get_names") else ()
+        return names + ("text-x-generic",)
+    except Exception:
+        return ("text-x-generic", "application-octet-stream")
+
+
 def file_rows(query, limit=12):
     """'/name' → files under your home folder (fd: respects .gitignore, skips hidden), newest first."""
     import shutil
@@ -109,7 +121,7 @@ def file_rows(query, limit=12):
     rows = []
     for path in paths[:limit]:
         folder = str(path.parent).replace(str(Path.home()), "~", 1)
-        icon = ("folder",) if path.is_dir() else ("text-x-generic", "application-octet-stream")
+        icon = ("folder",) if path.is_dir() else _mime_icon(path)
         rows.append(App(id="file:", path=str(path), name=path.name, generic="", keywords=(), executable="",
                         comment=folder, icon_names=icon, icon_path=""))
     return rows
